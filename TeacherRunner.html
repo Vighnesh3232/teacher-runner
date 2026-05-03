@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Teacher Runner 🎮</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;700;900&display=swap');
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{
+    background:#1a1a2e;display:flex;justify-content:center;align-items:center;
+    height:100vh;overflow:hidden;font-family:'Nunito',sans-serif;touch-action:none;
+  }
+  #gameWrapper{
+    position:relative;width:100vw;max-width:480px;height:100vh;max-height:900px;
+    overflow:hidden;box-shadow:0 0 60px rgba(255,200,0,0.22);
+  }
+  canvas{display:block;width:100%;height:100%;}
+
+  /* ── SCREENS ── */
+  .screen{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    justify-content:center;align-items:center;text-align:center;padding:26px;
+    transition:opacity 0.4s ease;
+  }
+  .screen.hidden{opacity:0;pointer-events:none;}
+
+  /* START */
+  #startScreen{background:linear-gradient(160deg,#0f3460,#16213e,#0f3460);}
+  .train-deco{font-size:56px;animation:trainSlide 2.5s ease-in-out infinite;display:block;margin-bottom:4px;}
+  @keyframes trainSlide{0%,100%{transform:translateX(-24px)}50%{transform:translateX(24px)}}
+  .game-title{
+    font-family:'Bangers',cursive;font-size:52px;letter-spacing:3px;
+    color:#FFD700;text-shadow:4px 4px 0 #e63946,-2px -2px 0 #e63946;
+    line-height:1;margin-bottom:5px;
+  }
+  .game-subtitle{font-size:14px;color:#a8dadc;font-weight:700;margin-bottom:3px;}
+  .teacher-name-display{
+    font-family:'Bangers',cursive;font-size:25px;color:#FFD700;
+    background:rgba(255,215,0,0.12);border:2px solid #FFD700;
+    border-radius:50px;padding:5px 20px;margin:9px 0 16px;letter-spacing:2px;
+  }
+  .how-to{
+    background:rgba(255,255,255,0.07);border-radius:16px;
+    padding:11px 16px;margin-bottom:20px;border:1px solid rgba(255,255,255,0.1);
+  }
+  .how-to p{color:#e0e0e0;font-size:12.5px;line-height:1.95;}
+  .how-to span{font-size:16px;}
+  .btn-start{
+    font-family:'Bangers',cursive;font-size:27px;letter-spacing:2px;
+    background:linear-gradient(135deg,#e63946,#f4a261);color:white;
+    border:none;padding:14px 48px;border-radius:50px;cursor:pointer;
+    box-shadow:0 6px 0 #9b2226,0 10px 28px rgba(230,57,70,0.42);
+    transition:all 0.15s;text-shadow:2px 2px 0 rgba(0,0,0,0.22);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .btn-start:active{transform:translateY(4px);box-shadow:0 2px 0 #9b2226;}
+
+  /* END */
+  #endScreen{background:linear-gradient(160deg,#0d1b2a,#16213e);overflow-y:auto;gap:0;}
+  .trophy-anim{font-size:68px;animation:bounce 1s ease infinite alternate;display:block;margin-bottom:4px;}
+  @keyframes bounce{from{transform:translateY(0) scale(1)}to{transform:translateY(-13px) scale(1.1)}}
+  .end-title{
+    font-family:'Bangers',cursive;font-size:34px;color:#FFD700;
+    text-shadow:3px 3px 0 #e63946;margin:4px 0 3px;letter-spacing:2px;
+  }
+  .end-msg{
+    color:#a8dadc;font-size:13.5px;line-height:1.7;margin:4px 0 14px;
+    max-width:290px;font-weight:700;
+  }
+  .end-msg em{color:#FFD700;font-style:normal;}
+
+  /* Group photo / video frame */
+  .group-frame{
+    width:280px;height:185px;border:3px dashed #FFD700;border-radius:18px;
+    background:rgba(255,215,0,0.05);display:flex;flex-direction:column;
+    justify-content:center;align-items:center;margin:0 auto 16px;
+    overflow:hidden;position:relative;
+  }
+  #groupPhoto{width:100%;height:100%;object-fit:cover;border-radius:14px;display:none;}
+  .group-placeholder{display:flex;flex-direction:column;align-items:center;gap:5px;}
+  .group-placeholder span{font-size:40px;}
+  .group-placeholder p{color:rgba(255,215,0,0.7);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;}
+  .group-placeholder small{color:rgba(255,255,255,0.28);font-size:9.5px;}
+
+  /* Game Over end screen variant */
+  #endScreen.gameover .trophy-anim{animation:none;filter:grayscale(1);opacity:0.6;}
+  #endScreen.gameover .end-title{color:#e63946;text-shadow:3px 3px 0 #9b2226;}
+  #endScreen.gameover .group-frame{display:none;}
+
+  .btn-restart{
+    font-family:'Bangers',cursive;font-size:21px;letter-spacing:2px;
+    background:linear-gradient(135deg,#2a9d8f,#264653);color:white;
+    border:none;padding:12px 40px;border-radius:50px;cursor:pointer;
+    box-shadow:0 5px 0 #1a5f5a;transition:all 0.15s;
+    -webkit-tap-highlight-color:transparent;
+  }
+  .btn-restart:active{transform:translateY(4px);box-shadow:0 2px 0 #1a5f5a;}
+
+  /* POPUP */
+  #popup{
+    position:absolute;inset:0;background:rgba(0,0,0,0.80);
+    display:flex;justify-content:center;align-items:center;
+    z-index:100;padding:18px;backdrop-filter:blur(6px);
+  }
+  #popup.hidden{display:none;}
+  .popup-card{
+    background:linear-gradient(135deg,#1a1a2e,#16213e);
+    border:3px solid #FFD700;border-radius:26px;
+    padding:22px 20px 20px;max-width:320px;width:100%;text-align:center;
+    box-shadow:0 0 40px rgba(255,215,0,0.28),0 20px 60px rgba(0,0,0,0.55);
+    animation:popIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes popIn{from{transform:scale(0.5) translateY(40px);opacity:0}to{transform:scale(1) translateY(0);opacity:1}}
+
+  /* Student photo circle */
+  .student-photo-wrap{
+    width:84px;height:84px;border-radius:50%;border:3px solid #FFD700;
+    margin:0 auto 10px;background:rgba(255,215,0,0.08);
+    display:flex;justify-content:center;align-items:center;
+    overflow:hidden;position:relative;
+    box-shadow:0 0 22px rgba(255,215,0,0.32);
+  }
+  #popupPhoto{
+    width:100%;height:100%;object-fit:cover;border-radius:50%;
+    position:absolute;inset:0;display:none;
+  }
+  .student-photo-fallback{
+    display:flex;flex-direction:column;align-items:center;gap:1px;
+    position:absolute;inset:0;justify-content:center;
+  }
+  .fallback-emoji{font-size:32px;}
+  .fallback-label{font-size:9px;color:rgba(255,215,0,0.55);font-weight:700;letter-spacing:1px;}
+
+  .popup-student-name{
+    font-family:'Bangers',cursive;font-size:28px;
+    color:#FFD700;letter-spacing:2px;margin-bottom:3px;
+  }
+  .popup-badge{
+    display:inline-block;background:linear-gradient(135deg,#e63946,#f4a261);
+    color:white;font-size:10px;font-weight:900;
+    padding:3px 11px;border-radius:50px;margin-bottom:10px;
+    letter-spacing:1px;text-transform:uppercase;
+  }
+  .popup-message{
+    color:#e0e0e0;font-size:13px;line-height:1.72;
+    margin-bottom:12px;font-weight:700;min-height:50px;
+  }
+
+  /* Progress dots */
+  .popup-progress{display:flex;justify-content:center;gap:5px;flex-wrap:wrap;margin-bottom:13px;}
+  .prog-dot{
+    width:10px;height:10px;border-radius:50%;
+    background:rgba(255,255,255,0.13);border:1.5px solid rgba(255,215,0,0.28);
+    transition:all 0.3s;
+  }
+  .prog-dot.done{background:#FFD700;border-color:#FFD700;box-shadow:0 0 6px #FFD700;}
+
+  .btn-continue{
+    font-family:'Bangers',cursive;font-size:21px;letter-spacing:2px;
+    background:linear-gradient(135deg,#e63946,#f4a261);color:white;
+    border:none;padding:11px 36px;border-radius:50px;cursor:pointer;
+    box-shadow:0 5px 0 #9b2226;transition:all 0.15s;
+    -webkit-tap-highlight-color:transparent;width:100%;
+  }
+  .btn-continue:active{transform:translateY(3px);box-shadow:0 2px 0 #9b2226;}
+
+  /* HUD */
+  #hud{
+    position:absolute;top:0;left:0;right:0;
+    display:flex;justify-content:space-between;align-items:center;
+    padding:10px 13px;pointer-events:none;z-index:10;
+  }
+  #hud.hidden{display:none;}
+  .hud-lives{font-size:19px;letter-spacing:2px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.6));}
+  .hud-score{
+    font-family:'Bangers',cursive;font-size:16px;color:#FFD700;
+    background:rgba(0,0,0,0.48);padding:4px 12px;border-radius:20px;
+    border:1px solid rgba(255,215,0,0.3);letter-spacing:1px;
+  }
+
+  /* ── PAUSE BUTTON ── */
+  #pauseBtn{
+    position:absolute;top:8px;right:12px;
+    width:38px;height:38px;border-radius:50%;
+    background:rgba(0,0,0,0.55);border:2px solid rgba(255,215,0,0.5);
+    color:#FFD700;font-size:16px;
+    display:flex;justify-content:center;align-items:center;
+    cursor:pointer;z-index:20;
+    pointer-events:all;
+    -webkit-tap-highlight-color:transparent;
+    transition:background 0.15s,border-color 0.15s;
+    box-shadow:0 2px 8px rgba(0,0,0,0.4);
+  }
+  #pauseBtn:active{background:rgba(255,215,0,0.2);border-color:#FFD700;}
+  #pauseBtn.hidden{display:none;}
+
+  /* PAUSE OVERLAY */
+  #pauseOverlay{
+    position:absolute;inset:0;
+    background:rgba(0,0,0,0.72);
+    display:flex;flex-direction:column;
+    justify-content:center;align-items:center;
+    z-index:50;backdrop-filter:blur(5px);
+  }
+  #pauseOverlay.hidden{display:none;}
+  .pause-icon{font-size:64px;margin-bottom:10px;animation:pulseP 1.5s ease infinite alternate;}
+  @keyframes pulseP{from{transform:scale(1)}to{transform:scale(1.1)}}
+  .pause-title{
+    font-family:'Bangers',cursive;font-size:42px;color:#FFD700;
+    text-shadow:3px 3px 0 #e63946;letter-spacing:3px;margin-bottom:6px;
+  }
+  .pause-sub{color:#a8dadc;font-size:13px;font-weight:700;margin-bottom:28px;}
+  .btn-resume{
+    font-family:'Bangers',cursive;font-size:26px;letter-spacing:2px;
+    background:linear-gradient(135deg,#e63946,#f4a261);color:white;
+    border:none;padding:14px 52px;border-radius:50px;cursor:pointer;
+    box-shadow:0 6px 0 #9b2226;transition:all 0.15s;
+    -webkit-tap-highlight-color:transparent;
+    text-shadow:2px 2px 0 rgba(0,0,0,0.2);
+  }
+  .btn-resume:active{transform:translateY(4px);box-shadow:0 2px 0 #9b2226;}
+  .btn-pause-restart{
+    font-family:'Bangers',cursive;font-size:18px;letter-spacing:1px;
+    background:transparent;color:rgba(255,255,255,0.45);
+    border:1.5px solid rgba(255,255,255,0.2);
+    padding:9px 30px;border-radius:50px;cursor:pointer;margin-top:12px;
+    -webkit-tap-highlight-color:transparent;transition:all 0.15s;
+  }
+  .btn-pause-restart:active{color:white;border-color:white;}
+
+  /* Hit flash */
+  #hitFlash{
+    position:absolute;inset:0;background:rgba(230,57,70,0.32);
+    pointer-events:none;z-index:5;opacity:0;transition:opacity 0.12s;
+  }
+
+  /* Jump hint */
+  #jumpHint{
+    position:absolute;bottom:16px;left:50%;transform:translateX(-50%);
+    color:rgba(255,255,255,0.52);font-size:11.5px;font-weight:700;
+    letter-spacing:1px;animation:fadeHint 3.5s ease forwards;
+    pointer-events:none;z-index:10;white-space:nowrap;
+  }
+  @keyframes fadeHint{0%,60%{opacity:1}100%{opacity:0}}
+</style>
+</head>
+<body>
+<div id="gameWrapper">
+  <canvas id="gameCanvas"></canvas>
+
+  <!-- HUD (lives on left, score on right — pause btn overlaps top-right) -->
+  <div id="hud" class="hidden">
+    <div class="hud-lives" id="livesDisplay">❤️❤️❤️</div>
+    <div class="hud-score"  id="scoreDisplay">👨‍🎓 0 / 13</div>
+  </div>
+
+  <!-- PAUSE BUTTON (top-right, above hud score) -->
+  <button id="pauseBtn" class="hidden" onclick="togglePause()">⏸</button>
+
+  <div id="hitFlash"></div>
+
+  <!-- START SCREEN -->
+  <div class="screen" id="startScreen">
+    <span class="train-deco">🚂</span>
+    <div class="game-title">Teacher<br>Runner</div>
+    <div class="game-subtitle">A small game to say</div>
+    <div class="game-subtitle" style="color:#FFD700;font-size:16px;margin-bottom:2px;">Thank You ❤️</div>
+    <div class="teacher-name-display">👩‍🏫 Jaya Ji</div>
+    <div class="how-to">
+      <p>
+        <span>👆</span> Tap anywhere to Jump<br>
+        <span>🚂</span> Dodge trains, barriers &amp; hurdles<br>
+        <span>👨‍🎓</span> Collect all 13 students!<br>
+        <span>❤️</span> 3 lives — don't lose them all!
+      </p>
+    </div>
+    <button class="btn-start" onclick="startGame()">▶ START GAME</button>
+  </div>
+
+  <!-- END SCREEN (used for both win & game over) -->
+  <div class="screen hidden" id="endScreen">
+    <span class="trophy-anim" id="endIcon">🏆</span>
+    <div class="end-title" id="endTitle">LEVEL COMPLETE!</div>
+    <div class="end-msg" id="endMsg">
+      You didn't just collect students…<br>
+      <em>You shaped them.</em><br>
+      Thank you for everything, <em>Jaya Ji</em> ❤️
+    </div>
+
+    <!--
+      GROUP PHOTO / VIDEO FRAME
+      ▸ Photo : give #groupPhoto a src and remove its display:none,
+                then add display:none to #groupPlaceholder
+      ▸ Video : replace <img id="groupPhoto"> with
+                <video autoplay loop muted playsinline src="video.mp4"
+                  style="width:100%;height:100%;object-fit:cover;border-radius:14px;"></video>
+    -->
+    <div class="group-frame" id="groupFrame">
+      <img id="groupPhoto" src="" alt="Class Group Photo">
+      <div class="group-placeholder" id="groupPlaceholder">
+        <span>📸</span>
+        <p>Group Photo / Video</p>
+        <small>Replace with your class photo!</small>
+      </div>
+    </div>
+
+    <button class="btn-restart" onclick="restartGame()">🔄 Play Again</button>
+  </div>
+
+  <!-- PAUSE OVERLAY -->
+  <div id="pauseOverlay" class="hidden">
+    <div class="pause-icon">⏸</div>
+    <div class="pause-title">PAUSED</div>
+    <div class="pause-sub">Take a breath, Jaya Ji 😊</div>
+    <button class="btn-resume" onclick="togglePause()">▶ RESUME</button>
+    <button class="btn-pause-restart" onclick="restartGame()">↺ Restart</button>
+  </div>
+
+  <!-- STUDENT POPUP -->
+  <div id="popup" class="hidden">
+    <div class="popup-card">
+      <!--
+        STUDENT PHOTO CIRCLE
+        Set photoUrl in the STUDENTS array in JS to show a real photo.
+        Leave as '' to show the emoji avatar fallback automatically.
+      -->
+      <div class="student-photo-wrap">
+        <img id="popupPhoto" src="" alt="Student Photo"
+          onload="this.style.display='block';document.getElementById('popupFallback').style.display='none';"
+          onerror="this.style.display='none';document.getElementById('popupFallback').style.display='flex';">
+        <div class="student-photo-fallback" id="popupFallback">
+          <span class="fallback-emoji" id="popupAvatar">👨‍🎓</span>
+          <span class="fallback-label">PHOTO</span>
+        </div>
+      </div>
+
+      <div class="popup-student-name" id="popupName">Student</div>
+      <div class="popup-badge" id="popupBadge">Collected! 🎉</div>
+      <div class="popup-message" id="popupMessage">Message here</div>
+      <div class="popup-progress" id="popupProgress"></div>
+      <button class="btn-continue" onclick="continueGame()">Continue ▶</button>
+    </div>
+  </div>
+
+  <div id="jumpHint" style="display:none">👆 TAP ANYWHERE TO JUMP</div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  TEACHER RUNNER v3
+//  Changes:
+//   • Pause button (top-right), pause overlay with resume/restart
+//   • Missed students re-queued — game never ends until all 13 collected
+//   • Game Over when lives hit 0 (separate from win screen)
+//   • Student photo placeholder preserved (photoUrl per student)
+// ═══════════════════════════════════════════════════════════
+
+const canvas  = document.getElementById('gameCanvas');
+const ctx     = canvas.getContext('2d');
+const wrapper = document.getElementById('gameWrapper');
+
+// ─── STUDENTS DATA ───────────────────────────────────────
+// photoUrl: set to an image URL to show a real photo in the popup.
+// Leave as '' to show the emoji avatar fallback.
+const STUDENTS = [
+  { name:'Vighnesh',  avatar:'🧑‍💻', photoUrl:'', message:'A heartfelt message for Vighnesh goes here — something special just for you! 🌟' },
+  { name:'Henrick',   avatar:'🧑‍🎨', photoUrl:'', message:'A heartfelt message for Henrick goes here — thank you for everything! ❤️' },
+  { name:'Tejas',     avatar:'🧑‍🔬', photoUrl:'', message:'A heartfelt message for Tejas goes here — you have been absolutely amazing! 🚀' },
+  { name:'Rohit',     avatar:'🧑‍🏫', photoUrl:'', message:'A heartfelt message for Rohit goes here — keep shining bright! ✨' },
+  { name:'Annie',     avatar:'👩‍🎤', photoUrl:'', message:'A heartfelt message for Annie goes here — so proud of how far you have come! 🌸' },
+  { name:'Maria',     avatar:'👩‍🎨', photoUrl:'', message:'A heartfelt message for Maria goes here — your smile lights up the room! 💛' },
+  { name:'Rutika',    avatar:'👩‍🔬', photoUrl:'', message:'A heartfelt message for Rutika goes here — brilliant and so kind! 🌺' },
+  { name:'Nike',      avatar:'🧑‍🚀', photoUrl:'', message:'A heartfelt message for Nike goes here — always going the extra mile! ⚡' },
+  { name:'Poornima',  avatar:'👩‍💼', photoUrl:'', message:'A heartfelt message for Poornima goes here — a true star student! 🌟' },
+  { name:'Layan',     avatar:'🧑‍🎭', photoUrl:'', message:'A heartfelt message for Layan goes here — creativity personified! 🎨' },
+  { name:'Kristina',  avatar:'👩‍💻', photoUrl:'', message:'A heartfelt message for Kristina goes here — above and beyond, always! 💪' },
+  { name:'Shounak',   avatar:'🧑‍🎓', photoUrl:'', message:'A heartfelt message for Shounak goes here — the journey was worth it! 🏁' },
+  { name:'Maria M.',  avatar:'👩‍🏫', photoUrl:'', message:'A heartfelt message for Maria M. goes here — a wonderful spirit! 🦋' },
+];
+
+// ─── CANVAS SIZING ───────────────────────────────────────
+function resize(){ canvas.width=wrapper.clientWidth; canvas.height=wrapper.clientHeight; }
+resize();
+window.addEventListener('resize', resize);
+
+// ─── CONSTANTS ───────────────────────────────────────────
+const GRAVITY    = 0.55;
+const JUMP_FORCE = -13.5;
+const GROUND_R   = 0.78;
+
+// ─── GAME STATE ──────────────────────────────────────────
+let state;   // 'start' | 'playing' | 'paused' | 'popup' | 'end'
+let lives, score, gameSpeed, frame;
+let spawnTimer, obstacleTimer;
+
+// Queue of students still to collect this run.
+// Missed students get pushed back to the END of this array.
+let pendingQueue   = [];   // students not yet collected & not on screen
+let collectedCount = 0;
+let collectedSet   = new Set(); // indices of collected students (by STUDENTS index)
+
+let teacher = {};
+let obstacles = [];
+let collectibles = [];   // { x, y, student, studentIdx, bob }
+let bgOff=0, buildOff=0;
+
+// ─── OBSTACLE TYPES ──────────────────────────────────────
+const OBS_TYPES = [
+  { type:'train',   w:118, h:68 },
+  { type:'barrier', w:26,  h:46 },
+  { type:'cone',    w:27,  h:36 },
+  { type:'hurdle',  w:54,  h:30 },
+];
+
+// ═══════════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════════
+function initGame(){
+  lives          = 3;
+  score          = 0;
+  collectedCount = 0;
+  collectedSet   = new Set();
+  gameSpeed      = 4.5;
+  frame          = 0;
+  spawnTimer     = 90;
+  obstacleTimer  = 50;
+  obstacles      = [];
+  collectibles   = [];
+  bgOff=0; buildOff=0;
+
+  // Shuffle all 13 students into the pending queue
+  pendingQueue = [...STUDENTS.keys()].sort(()=>Math.random()-0.5);
+
+  const G = canvas.height * GROUND_R;
+  teacher = {
+    x: canvas.width*0.18, y:G, w:44, h:56,
+    vy:0, onGround:true, jumpCount:0, maxJumps:1,
+    invincible:0, stagger:0, runTimer:0, runFrame:0,
+  };
+
+  buildProgressDots();
+  updateHUD();
+  document.getElementById('hud').classList.remove('hidden');
+  document.getElementById('pauseBtn').classList.remove('hidden');
+  document.getElementById('pauseOverlay').classList.add('hidden');
+  document.getElementById('endScreen').classList.add('hidden');
+  document.getElementById('endScreen').classList.remove('gameover');
+
+  const hint=document.getElementById('jumpHint');
+  hint.style.display='block';
+  hint.style.animation='none'; void hint.offsetWidth;
+  hint.style.animation='fadeHint 3.5s ease forwards';
+  setTimeout(()=>hint.style.display='none',3600);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  LOOP
+// ═══════════════════════════════════════════════════════════
+let animId=null;
+
+function gameLoop(){
+  if(state!=='playing') return;
+  frame++;
+  update();
+  render();
+  animId=requestAnimationFrame(gameLoop);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  UPDATE
+// ═══════════════════════════════════════════════════════════
+function update(){
+  const G=canvas.height*GROUND_R, W=canvas.width;
+
+  gameSpeed = 4.5 + frame*0.0008;
+  bgOff    = (bgOff    + gameSpeed*0.28) % W;
+  buildOff = (buildOff + gameSpeed*0.55) % W;
+
+  // Teacher physics
+  teacher.vy += GRAVITY;
+  teacher.y  += teacher.vy;
+  if(teacher.y>=G){ teacher.y=G; teacher.vy=0; teacher.onGround=true; teacher.jumpCount=0; }
+
+  teacher.runTimer++;
+  if(teacher.runTimer>6){ teacher.runTimer=0; teacher.runFrame=(teacher.runFrame+1)%4; }
+  if(teacher.invincible>0) teacher.invincible--;
+  if(teacher.stagger>0)    teacher.stagger--;
+
+  // ── Obstacles ──────────────────────────────────────────
+  obstacleTimer++;
+  const obsInt = Math.max(72, 138-frame*0.04);
+  if(obstacleTimer>obsInt){ obstacleTimer=0; spawnObstacle(); }
+
+  for(let i=obstacles.length-1;i>=0;i--){
+    obstacles[i].x -= gameSpeed;
+    if(obstacles[i].x+obstacles[i].w<0){ obstacles.splice(i,1); continue; }
+    if(teacher.invincible===0 && rectsOverlap(teacher,obstacles[i])){
+      hitObstacle();
+      teacher.invincible=105;
+    }
+  }
+
+  // ── Collectibles ───────────────────────────────────────
+  spawnTimer++;
+  const spawnInt = Math.max(185,330-frame*0.03);
+  if(spawnTimer>spawnInt && pendingQueue.length>0){ spawnTimer=0; spawnCollectible(); }
+
+  for(let i=collectibles.length-1;i>=0;i--){
+    collectibles[i].x -= gameSpeed*0.9;
+    collectibles[i].bob = Math.sin(frame*0.08+i*1.4)*7;
+
+    // ── Missed: went off-screen without being collected ──
+    if(collectibles[i].x+50<0){
+      // Push the student back to the END of pendingQueue so they try again later
+      pendingQueue.push(collectibles[i].studentIdx);
+      collectibles.splice(i,1);
+      continue;
+    }
+
+    // ── Collected ──
+    const c=collectibles[i];
+    if(rectsOverlap(teacher,{x:c.x,y:c.y-22,w:42,h:42})){
+      const studentIdx=c.studentIdx;
+      const student=STUDENTS[studentIdx];
+      collectibles.splice(i,1);
+      collectedCount++;
+      collectedSet.add(studentIdx);
+      score=collectedCount;
+      updateHUD();
+      playCollectSound();
+      showPopup(student);
+      return;  // pause loop until popup dismissed
+    }
+  }
+}
+
+function rectsOverlap(a,b){
+  const p=11;
+  return (a.x+p<b.x+b.w-p)&&(a.x+a.w-p>b.x+p)&&
+         (a.y-a.h+p<b.y)&&(a.y>b.y-b.h+p);
+}
+
+function spawnObstacle(){
+  const G=canvas.height*GROUND_R;
+  const t=OBS_TYPES[Math.floor(Math.random()*OBS_TYPES.length)];
+  obstacles.push({x:canvas.width+20,y:G,w:t.w,h:t.h,type:t.type});
+}
+
+function spawnCollectible(){
+  if(pendingQueue.length===0) return;
+  const G=canvas.height*GROUND_R;
+  const studentIdx=pendingQueue.shift();   // take from front of queue
+  const student=STUDENTS[studentIdx];
+  const heights=[G-8,G-65,G-115];
+  const y=heights[Math.floor(Math.random()*heights.length)];
+  collectibles.push({x:canvas.width+40, y, student, studentIdx, bob:0});
+}
+
+// ── Hit obstacle: lose a life, flash, GAME OVER if 0 lives ─
+function hitObstacle(){
+  playHitSound();
+  teacher.stagger=28;
+  lives=Math.max(0,lives-1);
+  updateHUD();
+
+  const flash=document.getElementById('hitFlash');
+  flash.style.opacity='1';
+  setTimeout(()=>flash.style.opacity='0',160);
+
+  if(lives===0){
+    // Short delay so flash is visible, then game over
+    cancelAnimationFrame(animId);
+    setTimeout(()=>showGameOver(), 400);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER
+// ═══════════════════════════════════════════════════════════
+function render(){
+  const W=canvas.width,H=canvas.height,G=H*GROUND_R;
+  ctx.clearRect(0,0,W,H);
+  drawBG(W,H,G);
+  drawTrack(W,H,G);
+  drawObstacles(G);
+  drawCollectibles(G);
+  drawTeacher(G);
+}
+
+function drawBG(W,H,G){
+  const sky=ctx.createLinearGradient(0,0,0,G);
+  sky.addColorStop(0,'#050d1f'); sky.addColorStop(1,'#0f3460');
+  ctx.fillStyle=sky; ctx.fillRect(0,0,W,G);
+
+  const stars=[[18,26],[76,13],[149,37],[229,9],[300,47],[374,17],[441,33],[53,57],[169,67],[347,61],[411,21],[91,41],[200,30],[320,52]];
+  ctx.fillStyle='rgba(255,255,255,0.62)';
+  for(const [sx,sy] of stars){
+    ctx.beginPath(); ctx.arc((sx+W*2)%W,sy,1.4,0,Math.PI*2); ctx.fill();
+  }
+
+  ctx.save();
+  ctx.shadowColor='#fffacd'; ctx.shadowBlur=20;
+  ctx.fillStyle='#fffde7';
+  ctx.beginPath(); ctx.arc(W*0.83,50,21,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle='#08132a';
+  ctx.beginPath(); ctx.arc(W*0.83+9,44,16,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  const bldgs=[
+    {bx:0,bh:108,bw:56},{bx:62,bh:82,bw:47},{bx:116,bh:128,bw:53},
+    {bx:176,bh:92,bw:43},{bx:226,bh:118,bw:67},{bx:300,bh:78,bw:39},
+    {bx:346,bh:138,bw:57},{bx:410,bh:98,bw:53},
+  ];
+  for(let pass=0;pass<2;pass++){
+    const off=pass===0?-buildOff:W-buildOff;
+    for(const b of bldgs){
+      const bx=b.bx+off, by=G-b.bh;
+      ctx.fillStyle='#0d1b2a'; ctx.fillRect(bx,by,b.bw,b.bh);
+      ctx.fillStyle='rgba(255,220,100,0.52)';
+      for(let wy=by+10;wy<G-10;wy+=18){
+        for(let wx=bx+6;wx<bx+b.bw-8;wx+=14){
+          if((wx*7+wy*13)%17>5) ctx.fillRect(wx,wy,7,9);
+        }
+      }
+    }
+  }
+}
+
+function drawTrack(W,H,G){
+  const gG=ctx.createLinearGradient(0,G,0,H);
+  gG.addColorStop(0,'#2d4a3e'); gG.addColorStop(1,'#1a3028');
+  ctx.fillStyle=gG; ctx.fillRect(0,G,W,H-G);
+
+  ctx.fillStyle='#3a3a3a'; ctx.fillRect(0,G-4,W,24);
+
+  ctx.fillStyle='#5c3d1e';
+  const slSp=40, slOff=(frame*gameSpeed*0.8)%slSp;
+  for(let sx=-slSp+slOff;sx<W+slSp;sx+=slSp) ctx.fillRect(sx,G-2,24,18);
+
+  ctx.strokeStyle='#aaa'; ctx.lineWidth=4;
+  ctx.beginPath(); ctx.moveTo(0,G+6);  ctx.lineTo(W,G+6);  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,G+15); ctx.lineTo(W,G+15); ctx.stroke();
+}
+
+function drawObstacles(G){
+  for(const obs of obstacles){
+    const x=obs.x, y=G-obs.h;
+    ctx.save();
+    if(obs.type==='train'){
+      const g=ctx.createLinearGradient(x,y,x,y+obs.h);
+      g.addColorStop(0,'#ff6b7a'); g.addColorStop(1,'#c1121f');
+      ctx.fillStyle=g; roundRect(ctx,x,y,obs.w,obs.h,8); ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.1)'; ctx.fillRect(x+4,y+4,obs.w-8,7);
+      ctx.fillStyle='rgba(255,255,255,0.2)';
+      ctx.fillRect(x+8,y+14,22,14); ctx.fillRect(x+38,y+14,22,14); ctx.fillRect(x+68,y+14,22,14);
+      ctx.fillStyle='#222';
+      for(let wx=x+15;wx<x+obs.w-10;wx+=30){
+        ctx.beginPath(); ctx.arc(wx,G,9,0,Math.PI*2); ctx.fill();
+        ctx.strokeStyle='#777'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.arc(wx,G,5,0,Math.PI*2); ctx.stroke();
+      }
+      ctx.font='17px serif'; ctx.textAlign='center';
+      ctx.fillText('🚂',x+obs.w/2,y+obs.h/2+6);
+
+    } else if(obs.type==='barrier'){
+      ctx.fillStyle='#f4a261'; ctx.fillRect(x,y,obs.w,obs.h);
+      ctx.fillStyle='#e63946';
+      for(let by=y;by<y+obs.h;by+=12) ctx.fillRect(x,by,obs.w,6);
+      ctx.fillStyle='#444'; ctx.fillRect(x-4,G-6,obs.w+8,8);
+      ctx.font='14px serif'; ctx.textAlign='center';
+      ctx.fillText('🚧',x+obs.w/2,y-4);
+
+    } else if(obs.type==='cone'){
+      ctx.beginPath();
+      ctx.moveTo(x+obs.w/2,y); ctx.lineTo(x+obs.w,y+obs.h); ctx.lineTo(x,y+obs.h);
+      ctx.closePath(); ctx.fillStyle='#FFD700'; ctx.fill();
+      ctx.strokeStyle='#e63946'; ctx.lineWidth=4;
+      ctx.beginPath(); ctx.moveTo(x+5,y+obs.h*0.4); ctx.lineTo(x+obs.w-5,y+obs.h*0.4); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x+9,y+obs.h*0.7); ctx.lineTo(x+obs.w-9,y+obs.h*0.7); ctx.stroke();
+
+    } else if(obs.type==='hurdle'){
+      ctx.fillStyle='#457b9d';
+      ctx.fillRect(x,y,8,obs.h); ctx.fillRect(x+obs.w-8,y,8,obs.h);
+      ctx.fillStyle='#a8dadc'; ctx.fillRect(x,y,obs.w,8);
+      ctx.fillStyle='#e63946'; ctx.fillRect(x,y+obs.h*0.5,obs.w,6);
+    }
+    ctx.restore();
+  }
+}
+
+function drawCollectibles(G){
+  for(const c of collectibles){
+    const x=c.x, y=c.y+c.bob, r=22;
+    const glow=ctx.createRadialGradient(x+21,y-20,2,x+21,y-20,36);
+    glow.addColorStop(0,'rgba(255,215,0,0.36)');
+    glow.addColorStop(1,'rgba(255,215,0,0)');
+    ctx.fillStyle=glow; ctx.beginPath(); ctx.arc(x+21,y-20,36,0,Math.PI*2); ctx.fill();
+
+    ctx.shadowColor='#FFD700'; ctx.shadowBlur=13;
+    ctx.fillStyle='#FFD700'; ctx.beginPath(); ctx.arc(x+21,y-20,r,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.fillStyle='#fff8e1'; ctx.beginPath(); ctx.arc(x+21,y-20,r-5,0,Math.PI*2); ctx.fill();
+
+    ctx.font='20px serif'; ctx.textAlign='center';
+    ctx.fillText(c.student.avatar,x+21,y-12);
+
+    ctx.fillStyle='#333'; ctx.font='bold 8px Nunito,sans-serif'; ctx.textAlign='center';
+    ctx.fillText(c.student.name,x+21,y+15);
+
+    if(frame%22<11){
+      ctx.fillStyle='rgba(255,215,0,0.9)'; ctx.font='10px serif';
+      ctx.fillText('✨',x+42,y-36); ctx.fillText('⭐',x-1,y-38);
+    }
+  }
+}
+
+function drawTeacher(G){
+  const t=teacher;
+  const x=t.x-t.w/2, y=t.y-t.h;
+
+  if(t.invincible>0 && Math.floor(t.invincible/7)%2===0) return;
+
+  const wob=t.stagger>0?Math.sin(t.stagger*0.8)*5:0;
+  ctx.save(); ctx.translate(wob,0);
+
+  ctx.fillStyle='rgba(0,0,0,0.25)';
+  ctx.beginPath(); ctx.ellipse(t.x,G+4,20,7,0,0,Math.PI*2); ctx.fill();
+
+  const bG=ctx.createLinearGradient(x,y,x,y+t.h);
+  bG.addColorStop(0,'#e63946'); bG.addColorStop(1,'#c1121f');
+  ctx.fillStyle=bG; roundRect(ctx,x+8,y+24,t.w-16,t.h-24,6); ctx.fill();
+
+  ctx.fillStyle='#f4a261';
+  ctx.beginPath();
+  ctx.moveTo(x+6,y+32); ctx.lineTo(x+t.w-4,y+34);
+  ctx.lineTo(x+t.w-6,y+50); ctx.lineTo(x+4,y+48);
+  ctx.closePath(); ctx.fill();
+
+  ctx.fillStyle='#f4a261';
+  ctx.beginPath(); ctx.ellipse(t.x,y+14,14,16,0,0,Math.PI*2); ctx.fill();
+
+  ctx.fillStyle='#1a1a1a';
+  ctx.beginPath(); ctx.ellipse(t.x,y+6,14,10,0,Math.PI,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(t.x+10,y+3,6,0,Math.PI*2); ctx.fill();
+
+  ctx.fillStyle='#e63946';
+  ctx.beginPath(); ctx.arc(t.x,y+10,2.5,0,Math.PI*2); ctx.fill();
+
+  ctx.fillStyle='#222';
+  ctx.beginPath(); ctx.arc(t.x-5,y+14,2,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(t.x+5,y+14,2,0,Math.PI*2); ctx.fill();
+
+  ctx.strokeStyle='#c1121f'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(t.x,y+19,5,0.1,Math.PI-0.1); ctx.stroke();
+
+  const armS=Math.sin(frame*0.26)*18;
+  ctx.strokeStyle='#f4a261'; ctx.lineWidth=5; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(t.x-8,y+30); ctx.lineTo(t.x-18,y+30+armS); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(t.x+8,y+30); ctx.lineTo(t.x+18,y+30-armS); ctx.stroke();
+
+  const legS=Math.sin(frame*0.3)*14;
+  ctx.strokeStyle='#c1121f'; ctx.lineWidth=6;
+  ctx.beginPath(); ctx.moveTo(t.x-6,y+t.h-10); ctx.lineTo(t.x-14,y+t.h+legS); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(t.x+6,y+t.h-10); ctx.lineTo(t.x+14,y+t.h-legS); ctx.stroke();
+
+  ctx.fillStyle='#264653';
+  ctx.fillRect(t.x-18,y+t.h+legS-3,14,7);
+  ctx.fillRect(t.x+6, y+t.h-legS-3,14,7);
+
+  ctx.fillStyle='rgba(255,215,0,0.9)';
+  ctx.font='bold 8px Nunito,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('Jaya Ji 👩‍🏫',t.x,y-6);
+
+  ctx.restore();
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r); ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h); ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r); ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y); ctx.closePath();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SOUND
+// ═══════════════════════════════════════════════════════════
+let audioCtx=null;
+function getAC(){ if(!audioCtx) audioCtx=new(window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
+
+function playCollectSound(){
+  try{
+    const ac=getAC(), notes=[523,659,784,1047];
+    notes.forEach((f,i)=>{
+      const o=ac.createOscillator(),g=ac.createGain();
+      o.connect(g);g.connect(ac.destination);
+      o.frequency.value=f;o.type='sine';
+      g.gain.setValueAtTime(0.15,ac.currentTime+i*0.07);
+      g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+i*0.07+0.13);
+      o.start(ac.currentTime+i*0.07);o.stop(ac.currentTime+i*0.07+0.17);
+    });
+  }catch(e){}
+}
+function playHitSound(){
+  try{
+    const ac=getAC(),o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    o.frequency.value=115;o.type='sawtooth';
+    g.gain.setValueAtTime(0.17,ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.27);
+    o.start(ac.currentTime);o.stop(ac.currentTime+0.27);
+  }catch(e){}
+}
+function playJumpSound(){
+  try{
+    const ac=getAC(),o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    o.frequency.setValueAtTime(270,ac.currentTime);
+    o.frequency.exponentialRampToValueAtTime(540,ac.currentTime+0.1);
+    o.type='sine';
+    g.gain.setValueAtTime(0.08,ac.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ac.currentTime+0.13);
+    o.start(ac.currentTime);o.stop(ac.currentTime+0.13);
+  }catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════
+//  UI
+// ═══════════════════════════════════════════════════════════
+function updateHUD(){
+  let d='';
+  for(let i=0;i<3;i++) d+=(i<lives?'❤️':'🖤');
+  document.getElementById('livesDisplay').textContent=d;
+  document.getElementById('scoreDisplay').textContent=`👨‍🎓 ${score} / 13`;
+}
+
+function buildProgressDots(){
+  const wrap=document.getElementById('popupProgress');
+  wrap.innerHTML='';
+  for(let i=0;i<STUDENTS.length;i++){
+    const d=document.createElement('div');
+    d.className='prog-dot'; d.id='dot-'+i;
+    wrap.appendChild(d);
+  }
+}
+
+function updateProgressDots(){
+  for(let i=0;i<STUDENTS.length;i++){
+    const d=document.getElementById('dot-'+i);
+    if(d) d.classList.toggle('done',collectedSet.has(i));
+  }
+}
+
+// ── POPUP ─────────────────────────────────────────────────
+function showPopup(student){
+  cancelAnimationFrame(animId);
+  state='popup';
+
+  const img=document.getElementById('popupPhoto');
+  const fallback=document.getElementById('popupFallback');
+  if(student.photoUrl && student.photoUrl!==''){
+    img.src=student.photoUrl;
+  } else {
+    img.style.display='none';
+    fallback.style.display='flex';
+  }
+  document.getElementById('popupAvatar').textContent=student.avatar;
+  document.getElementById('popupName').textContent=student.name;
+  document.getElementById('popupBadge').textContent=`#${collectedCount} Collected! 🎉`;
+  document.getElementById('popupMessage').textContent=student.message;
+  updateProgressDots();
+  document.getElementById('popup').classList.remove('hidden');
+}
+
+function continueGame(){
+  document.getElementById('popup').classList.add('hidden');
+  // Win condition: all 13 collected
+  if(collectedCount>=STUDENTS.length){ showWinScreen(); return; }
+  state='playing';
+  gameLoop();
+}
+
+// ── WIN SCREEN ────────────────────────────────────────────
+function showWinScreen(){
+  state='end';
+  cancelAnimationFrame(animId);
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('pauseBtn').classList.add('hidden');
+
+  const es=document.getElementById('endScreen');
+  es.classList.remove('gameover');
+  document.getElementById('endIcon').textContent='🏆';
+  document.getElementById('endTitle').textContent='LEVEL COMPLETE!';
+  document.getElementById('endMsg').innerHTML=
+    "You didn't just collect students…<br><em>You shaped them.</em><br>Thank you for everything, <em>Jaya Ji</em> ❤️";
+  document.getElementById('groupFrame').style.display='';
+  es.classList.remove('hidden');
+}
+
+// ── GAME OVER ─────────────────────────────────────────────
+function showGameOver(){
+  state='end';
+  cancelAnimationFrame(animId);
+  document.getElementById('hud').classList.add('hidden');
+  document.getElementById('pauseBtn').classList.add('hidden');
+  document.getElementById('pauseOverlay').classList.add('hidden');
+
+  const es=document.getElementById('endScreen');
+  es.classList.add('gameover');
+  document.getElementById('endIcon').textContent='💔';
+  document.getElementById('endTitle').textContent='GAME OVER';
+  document.getElementById('endMsg').innerHTML=
+    `You collected <em>${collectedCount} of 13</em> students.<br><br>Jaya Ji never stops trying… <em>neither should you!</em> 💪`;
+  document.getElementById('groupFrame').style.display='none';
+  es.classList.remove('hidden');
+}
+
+// ── PAUSE ─────────────────────────────────────────────────
+function togglePause(){
+  if(state==='playing'){
+    state='paused';
+    cancelAnimationFrame(animId);
+    document.getElementById('pauseOverlay').classList.remove('hidden');
+    document.getElementById('pauseBtn').textContent='▶';
+  } else if(state==='paused'){
+    state='playing';
+    document.getElementById('pauseOverlay').classList.add('hidden');
+    document.getElementById('pauseBtn').textContent='⏸';
+    gameLoop();
+  }
+}
+
+// ── FLOW ──────────────────────────────────────────────────
+function startGame(){
+  document.getElementById('startScreen').classList.add('hidden');
+  state='playing';
+  initGame();
+  gameLoop();
+}
+
+function restartGame(){
+  cancelAnimationFrame(animId);
+  document.getElementById('endScreen').classList.add('hidden');
+  document.getElementById('popup').classList.add('hidden');
+  document.getElementById('pauseOverlay').classList.add('hidden');
+  document.getElementById('pauseBtn').textContent='⏸';
+  document.getElementById('groupFrame').style.display='';
+  state='playing';
+  initGame();
+  gameLoop();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INPUT
+// ═══════════════════════════════════════════════════════════
+function jump(){
+  if(state!=='playing') return;
+  if(teacher.jumpCount<teacher.maxJumps){
+    teacher.vy=JUMP_FORCE; teacher.onGround=false;
+    teacher.jumpCount++; playJumpSound();
+  }
+}
+
+document.addEventListener('touchstart',e=>{
+  if(state==='playing'
+     && !e.target.closest('button')
+     && !e.target.closest('.popup-card')
+     && !e.target.closest('#pauseOverlay')){
+    e.preventDefault(); jump();
+  }
+},{passive:false});
+
+document.addEventListener('keydown',e=>{
+  if(e.code==='Space'||e.code==='ArrowUp'){ e.preventDefault(); jump(); }
+  if(e.code==='Escape'||e.code==='KeyP'){
+    if(state==='playing'||state==='paused') togglePause();
+  }
+});
+
+document.addEventListener('touchmove',e=>e.preventDefault(),{passive:false});
+</script>
+</body>
+</html>
